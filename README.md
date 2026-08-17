@@ -20,13 +20,22 @@ here rebuild everything locally:
 
 ```bash
 export B3_GAME_ROOT="/path/to/Burnout 3 Takedown"   # the folder with default.xbe
-make assets                                          # extract the data tables
-make                                                 # -> ./burnout3
+
+make assets     # the compiled-in data tables    (fast)
+make content    # track, sky, cars, textures, HUD art
+make audio      # engine loops, effects, music   (~5 GB, slow)
+make            # -> ./burnout3
 ```
 
-`make` refuses to build without the extracted data and tells you exactly what
-is missing — it will never quietly produce a program with invented numbers in
-it. The full walkthrough, including the track/car/audio content, is
+All three extraction steps matter, and they fail differently if you skip one:
+
+* without **assets**, `make` refuses to build and names the missing headers —
+  it will never quietly produce a program with invented numbers in it;
+* without **content**, it builds and runs but there is no track and no sky to
+  drive through;
+* without **audio**, everything works in silence.
+
+`make everything` runs all three in order. The full walkthrough is
 **[docs/ASSETS.md](docs/ASSETS.md)**.
 
 Nothing has a path baked in; every tool resolves `B3_GAME_ROOT` through

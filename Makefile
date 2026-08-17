@@ -3,7 +3,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -O2
 LDFLAGS = $(shell pkg-config --cflags --libs sdl2 SDL2_image) -lGL -lm
 
-.PHONY: all clean clean-assets run assets check-assets elf \
+.PHONY: all clean clean-assets run assets content audio everything check-assets elf \
 	test-nav-walk test-nav-selector test-soup-ray test-traffic-paths \
 	test-traffic-reservations test-traffic-pool test-traffic-mix
 
@@ -61,7 +61,62 @@ assets: build/burnout3.elf
 	python3 tools/extract_bgd_paths.py
 	python3 tools/extract_traffic.py
 	python3 tools/extract_start_grid.py
-	@echo "generated headers written into src/ -- now run: make"
+	@echo ""
+	@echo "  Data tables written into src/. Now:  make content && make"
+	@echo "  ('make' alone compiles, but with no track to drive on.)"
+	@echo ""
+
+# ---------------------------------------------------------------------------
+# The world you actually drive through: track geometry, its textures, the
+# collision mesh, the sky, props, car meshes, HUD art and effects.
+#
+# `make assets` alone gets you a program that COMPILES; without this target it
+# renders an empty void with no track and no skybox. Both are needed.
+#
+# B3_TRACK selects the circuit (default US_C3_V1, matching the runtime default).
+# ---------------------------------------------------------------------------
+content: build/burnout3.elf
+	python3 tools/extract_track.py            # track.obj + track.mtl
+	python3 tools/extract_textures.py         # its textures
+	python3 tools/extract_collision.py        # the collision world
+	python3 tools/extract_envmap.py           # the sky
+	python3 tools/extract_light_probes.py
+	python3 tools/extract_props.py
+	python3 tools/extract_bgv.py build/cars   # car meshes
+	python3 tools/extract_bgv_textures.py
+	python3 tools/extract_traffic_lights.py
+	python3 tools/extract_txd.py              # HUD / frontend art
+	python3 tools/extract_carfx_art.py
+	python3 tools/extract_boostfx_art.py
+	python3 tools/extract_particlefx_art.py
+	python3 tools/extract_postfx_art.py
+	@echo ""
+	@echo "  World extracted. Audio is separate and slow:  make audio"
+	@echo ""
+
+# ~5 GB and the slowest step by far. The game runs without it -- you get
+# silence, not a crash -- so it is deliberately not part of `content`.
+#
+# All three walk the game directory recursively and name their output from the
+# dictionary inside each file, qualified by source path when names collide --
+# so the whole dump goes in as ONE root. Handing them individual files instead
+# renames every engine bank (awd_Car1_high, not awd_pveh_COMP_Car1_high) and
+# the game then finds none of them.
+#
+# The leading `-`: a handful of banks in the shipped data do not decode (6 of
+# 1569 waves here) and the extractors exit non-zero when any wave fails. That
+# is retail's data, not a fault in the tool -- this tree reproduces the same
+# 174 dictionaries / 1569 waves as the reference extraction -- so it must not
+# abort the rest of the chain. Make still prints the ignored error.
+audio: build/burnout3.elf
+	-python3 tools/extract_awd.py "$$B3_GAME_ROOT"  # .awd + per-car .hwd/.lwd
+	-python3 tools/extract_xwb.py "$$B3_GAME_ROOT"  # XACT wave banks
+	-python3 tools/extract_rws.py "$$B3_GAME_ROOT"  # crash beds
+	python3 tools/extract_eatrax.py -j 8 \
+	    --globalus "$$B3_GAME_ROOT/Data/Globalus.bin"   # streamed music
+
+# Everything, in order.
+everything: assets content audio
 
 test-soup-ray: build/validate_frozen_soup
 	./build/validate_frozen_soup

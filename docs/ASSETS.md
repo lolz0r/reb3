@@ -93,11 +93,14 @@ they are gitignored and generated locally:
 
 ```bash
 make assets      # runs all seven, in dependency order
-make             # then builds ./burnout3
 ```
 
 `make` refuses to build without them and tells you exactly what is missing —
 it will never silently produce a program with invented numbers in it.
+
+**This step alone does not get you a playable game.** It gets you a program
+that *compiles*. The track, sky and cars come from section 4; skip it and you
+build successfully, launch, and drive through an empty void.
 
 ### The one manual step
 
@@ -114,44 +117,76 @@ to a capstone sweep over the ELF — the pattern is in
 
 ---
 
-## 4. The runtime content
+## 4. The world you drive through (`make content`)
 
-`make assets` gets you a program that compiles. To actually drive, extract the
-geometry, textures and audio. These are independent of each other; run what you
-need.
+This is the step that puts a track under the car and a sky above it.
 
 ```bash
-# track geometry, textures, collision, props, lighting
-python3 tools/extract_track.py           # -> build/track.obj + build/tracks/
+make content
+```
+
+which runs, in order:
+
+```bash
+python3 tools/extract_track.py           # -> build/track.obj + build/tracks/<ID>/
 python3 tools/extract_textures.py        # -> build/textures/
 python3 tools/extract_collision.py       # -> build/collision.bin
+python3 tools/extract_envmap.py          # -> build/tracks/<ID>/envmap.png  (the sky)
+python3 tools/extract_light_probes.py
 python3 tools/extract_props.py           # -> build/tracks/<ID>/props.bin
-python3 tools/extract_envmap.py          # -> build/tracks/<ID>/
-python3 tools/extract_light_probes.py    # -> build/tracks/<ID>/
-
-# vehicles: meshes, their textures, and the traffic light/paint tables
 python3 tools/extract_bgv.py build/cars  # -> build/cars/<CLASS>_<CarN>.obj
-python3 tools/extract_bgv_textures.py    # -> build/cars/
-python3 tools/extract_traffic_lights.py  # -> build/cars/
-
-# effects art
+python3 tools/extract_bgv_textures.py
+python3 tools/extract_traffic_lights.py
+python3 tools/extract_txd.py             # -> build/frontend/  (HUD art)
 python3 tools/extract_carfx_art.py
 python3 tools/extract_boostfx_art.py
 python3 tools/extract_particlefx_art.py
 python3 tools/extract_postfx_art.py
-
-# audio: engine/effect banks, then the streamed music
-python3 tools/extract_awd.py             # -> build/audio/awd_*/
-python3 tools/extract_xwb.py             # -> build/audio/
-python3 tools/extract_eatrax.py          # -> build/music/   (slow; -j 8 helps)
 ```
 
-Audio and music are the bulk of the 7 GB and the slowest steps. The game runs
-without them — you get silence, not a crash.
+`B3_TRACK` selects the circuit (default `US_C3_V1`, matching the runtime
+default). Track-scoped extractors also take `--event <ID>`, and several accept
+`--all` to do every shipped track at once. Nothing is hardcoded per track — the
+IDs come from the shipped track list.
 
-Track-scoped extractors default to one event and take `--event <ID>`; several
-accept `--all`. Nothing is hardcoded per track: the IDs come from the shipped
-track list, so `B3_TRACK` selects at runtime.
+A correct run reports, on launch:
+
+```
+[Burnout3] REAL track geometry: 97826 verts, 90246 tris from build/track.obj
+[Burnout3] GAME collision world: 60373 triangles (build/collision.bin)
+[carfx] env map build/tracks/US_C3_V1/envmap.png
+[Burnout3] REAL textures: 122 loaded, 0 groups unresolved (of 990)
+[Burnout3 HUD] 99 textures from build/frontend (edge 41/41, core 30/30, over 20/20)
+```
+
+If you instead see `Generated road mesh` with no `REAL track geometry` line,
+`make content` has not been run.
+
+## 4b. Audio (`make audio`)
+
+~5 GB and by far the slowest step, which is why it is separate. The game runs
+without it — you get silence, not a crash.
+
+```bash
+make audio
+```
+
+```bash
+python3 tools/extract_awd.py "$B3_GAME_ROOT"   # .awd + the per-car .hwd/.lwd banks
+python3 tools/extract_xwb.py "$B3_GAME_ROOT"   # XACT wave banks
+python3 tools/extract_rws.py "$B3_GAME_ROOT"   # crash beds
+python3 tools/extract_eatrax.py -j 8 --globalus "$B3_GAME_ROOT/Data/Globalus.bin"
+```
+
+Pass the **game root as a single directory**, not a list of files. Each of the
+first three walks it recursively and names its output from the dictionary
+inside each file, qualifying with the source path when names collide. Hand them
+individual files and every engine bank is misnamed — `awd_Car1_high` instead of
+`awd_pveh_COMP_Car1_high` — and the game then finds none of them.
+
+Six of 1569 waves fail to decode; that is the shipped data, and `make audio`
+ignores the resulting non-zero exit rather than aborting the chain. A correct
+run ends with 174 dictionaries / 1569 waves and `EA TRAX: 44 tracks`.
 
 ---
 
