@@ -1,4 +1,4 @@
-// Top-level build file for the Burnout 3 RE harness Android port.
+// Top-level build file for the reB3 harness Android port.
 // The desktop build is untouched by anything under android/ -- see the
 // Makefile at the repo root, which still drives the host binary.
 plugins {

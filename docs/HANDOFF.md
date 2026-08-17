@@ -1,4 +1,4 @@
-# Burnout 3 RE — handoff
+# reB3 — handoff
 
 Written for whoever picks this up next. Read this before touching anything; it
 will save you days, mostly by telling you which approaches are already dead.

@@ -1,4 +1,4 @@
-# Android port of the Burnout 3 RE harness
+# Android port of the reB3 harness
 
 One checkout, two targets. `make` still produces the desktop binary exactly as
 before; `android/` produces an arm64 APK from **the same `src/*.c`**. There is
