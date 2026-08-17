@@ -1,0 +1,10 @@
+// Top-level build file for the Burnout 3 RE harness Android port.
+// The desktop build is untouched by anything under android/ -- see the
+// Makefile at the repo root, which still drives the host binary.
+plugins {
+    id 'com.android.application' version '8.13.2' apply false
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}

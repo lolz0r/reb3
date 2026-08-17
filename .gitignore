@@ -1,0 +1,52 @@
+# ---------------------------------------------------------------------------
+# Nothing derived from the retail game may be committed to this repository.
+#
+# Everything below is regenerated on your machine from YOUR copy of the game
+# by the tools in tools/ (see docs/ASSETS.md). None of it is redistributable.
+# ---------------------------------------------------------------------------
+
+# Build output
+/burnout3
+*.o
+
+# The corrected ELF, all extracted geometry, textures, audio, music, track and
+# collision data. ~7 GB once fully extracted.
+#   burnout3.elf   : tools/xbe2elf.py
+#   track.obj/.mtl : tools/extract_track.py
+#   textures/      : tools/extract_textures.py
+#   cars/          : tools/extract_bgv.py
+#   audio/, music/ : tools/extract_awd.py, tools/extract_eatrax.py
+/build/
+
+# GENERATED HEADERS -- retail data tables, emitted into src/ by the extractors.
+# These are game content in C form, not source. `make assets` writes them.
+/src/burnout3_car_physics.h
+/src/burnout3_font.h
+/src/burnout3_physics_params.h
+/src/burnout3_start_grid.h
+/src/burnout3_track_paths.h
+/src/burnout3_traffic_data.h
+/src/burnout3_vehicle_data.h
+
+# Reference captures. Screenshots of the retail game are the game's artwork --
+# cite a frame in the docs by all means, but do not commit one.
+/REFERENCE IMAGES/
+*.xbe
+*.iso
+
+# Ghidra project database (regenerable by importing build/burnout3.elf)
+/ghirda-manual.rep/
+/ghirda-manual.gpr
+/ghirda-manual.lock
+/ghirda-manual.lock~
+
+# Third-party clones with their own history
+/ghidra-mcp/
+/burnout-data-tool/
+
+__pycache__/
+*.pyc
+
+# recordings, scratch
+/scratchpad/
+*.mp4

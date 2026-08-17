@@ -1,0 +1,74 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.b3re.harness'
+    compileSdk 35
+    ndkVersion '27.2.12479018'
+
+    defaultConfig {
+        applicationId "com.b3re.harness"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "0.1"
+
+        ndk {
+            // Build 1 is arm64 only (every 64-bit Android device since 2017).
+            abiFilters 'arm64-v8a'
+        }
+        externalNativeBuild {
+            cmake {
+                // B3_ROOT points the native build at the repo checkout so the
+                // SAME src/*.c the Makefile compiles are compiled here.
+                arguments "-DB3_ROOT=${rootProject.projectDir.parentFile.absolutePath}",
+                          "-DANDROID_STL=c++_static",
+                          "-DCMAKE_BUILD_TYPE=Release"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    androidResources {
+        // burnout3_assets.zip is already deflated; storing it lets the
+        // first-run extractor stream straight out of the APK.
+        noCompress 'zip'
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            jniDebuggable true
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = false  // 16 KB page-size compat
+        }
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+}

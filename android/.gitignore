@@ -1,0 +1,9 @@
+# Android port -- everything here is derived / fetched, never committed.
+third_party/
+.gradle/
+build/
+app/build/
+app/.cxx/
+local.properties
+app/src/main/assets/*.zip
+app/src/main/assets/*.txt
