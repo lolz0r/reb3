@@ -249,6 +249,29 @@ Runs and renders on the Pixel (Mali, Android 16). See `docs/ANDROID_PORT.md`.
 
 ## 3. Validation & tooling
 
+### `extract_collision.py`'s containment self-check fails `[?]`
+
+The extractor writes a correct `collision.bin` — 60373 triangles, which the
+game loads and drives on, and byte-identical across runs — and then exits 1
+because its own sanity check does not hold:
+
+```
+[extract_collision] route XZ bounds x[4015..5812] z[1285..3137]
+                    NOT CONTAINED IN (FAIL) collision bounds
+```
+
+So either the check's premise is wrong (the route legitimately leaves the
+collision world's AABB), or the route and the collision world are being taken
+from two different things and it is luck that the game plays. Worth settling,
+because a wrong pairing here would be invisible until something falls through
+the floor. `make content` currently ignores the non-zero exit and says so.
+
+Related and probably the same thread: `generate_track()` in
+`src/burnout3_full.c` hardcodes the label `"Bangkok (Tracks/AS/C1_V1)"` while
+the runtime track id defaults to `US_C3_V1` and the route points come from the
+generated `burnout3_track_paths.h`. At minimum the label is stale.
+
+
 * **`tools/validate_gameplay.py` — green (91/91)**. Its collision-world
   section now compares the shared u16 source grid rather than float32/float64
   decimal expansions, uses valid resident-unit samples, and probes the
