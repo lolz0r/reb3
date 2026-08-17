@@ -1,11 +1,9 @@
 # reB3
+If Claude and Ghirda had a baby. The finest slop in all the lands. 
 
 A reverse engineering of *Burnout 3: Takedown* (Criterion Games / EA, 2004,
 Xbox) — a faithful recreation driven by data and logic recovered from the
 retail executable.
-
-Named in the tradition of `re3` and `devilutionX`: `re` + the game, because
-the interesting part is the *re*, not the branding.
 
 The physics, collision, scoring and AI are not a re-imagining. They are the
 game's own equations, recovered from `default.xbe`, each one cited to the
