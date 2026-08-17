@@ -1,4 +1,10 @@
-# Getting the data out of your own copy
+# Extraction reference
+
+**The step-by-step walkthrough is in the [README](../README.md)** — prerequisites,
+the four commands, what a correct launch prints, and what to do when it does
+not. This file is the reference behind it: why the ELF mapping matters, what
+each generated header holds and where it came from, the exact extractor
+invocations, and what must never be committed.
 
 This repository contains **no game content**. Not the executable, not the
 tracks, cars, textures, audio or music, and not the data tables extracted from

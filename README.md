@@ -16,30 +16,152 @@ meshes, no textures, no audio, and no data tables extracted from any of them.
 It is code and documentation only.
 
 To get a program that runs, you supply a dump of a disc you own and the tools
-here rebuild everything locally:
+here rebuild everything locally. Nothing has a path baked in; every tool
+resolves `B3_GAME_ROOT` through `tools/b3_paths.py`.
 
-```bash
-export B3_GAME_ROOT="/path/to/Burnout 3 Takedown"   # the folder with default.xbe
+---
 
-make assets     # the compiled-in data tables    (fast)
-make content    # track, sky, cars, textures, HUD art
-make audio      # engine loops, effects, music   (~5 GB, slow)
-make            # -> ./burnout3
+## Setup, start to finish
+
+### 1. What you need
+
+| | |
+|---|---|
+| **The game** | A dump of a disc you own. Developed against the NTSC-U (USA) release. |
+| **Python** | 3.8+, plus `pip install pillow capstone unicorn` — Pillow for texture PNGs, capstone and unicorn for the RE tools and the differential suites. |
+| **A C toolchain** | On Debian/Ubuntu: `sudo apt install build-essential libsdl2-dev libsdl2-image-dev libgl1-mesa-dev` |
+| **Disk** | ~8 GB free. Fully extracted, `build/` is about 7 GB, most of it audio. |
+| **Ghidra** | Only for one extractor — see step 3. Everything else needs just Python. |
+
+The game directory is whatever folder holds `default.xbe`:
+
+```
+Burnout 3 Takedown/
+├── default.xbe
+├── Data/            Globalus.bin, vdb.xml
+├── GLOBAL/
+├── pveh/            player + traffic vehicles (.bgv/.btv, .hwd/.lwd engine audio)
+├── sound/           .awd audio dictionaries
+└── Tracks/          per-track static.dat, streamed.dat, .bgd, .xwb, .rws
 ```
 
-All three extraction steps matter, and they fail differently if you skip one:
+```bash
+export B3_GAME_ROOT="/path/to/Burnout 3 Takedown"
+```
 
-* without **assets**, `make` refuses to build and names the missing headers —
-  it will never quietly produce a program with invented numbers in it;
-* without **content**, it builds and runs but there is no track and no sky to
-  drive through;
-* without **audio**, everything works in silence.
+Every tool reads that variable and fails with an explicit message if it is
+unset. It also matches path case insensitively, so `Tracks/` and `tracks/`
+both work — dumps differ.
 
-`make everything` runs all three in order. The full walkthrough is
-**[docs/ASSETS.md](docs/ASSETS.md)**.
+### 2. The corrected ELF
 
-Nothing has a path baked in; every tool resolves `B3_GAME_ROOT` through
-`tools/b3_paths.py`.
+```bash
+make elf        # -> build/burnout3.elf
+```
+
+Rebuilds `default.xbe` as a correctly mapped ELF32 (one `PT_LOAD` per section
+at its true VA, BSS materialised, `e_entry = 0x001D2807`). Every RE tool and
+every test suite reads this, not the XBE.
+
+It matters because loading the XBE as a flat binary is **silently wrong** —
+each section has a different `VA − file_offset` delta, so absolute data
+references land on the wrong bytes. `0x003A2D50` is `2.5` but reads as `0.0`;
+one float constant reads as the string `"Score/Burnout Points"`. See
+[docs/ASSETS.md](docs/ASSETS.md) for the full before/after.
+
+`build/burnout3.elf` is a derived copy of the retail executable. It is
+gitignored. Do not redistribute it.
+
+### 3. The data tables — `make assets`
+
+```bash
+make assets
+```
+
+Writes seven headers into `src/` that get compiled in: the physics parameter
+model, the 107-vehicle roster, 4,685 per-car overrides from `vdb.xml`, glyph
+metrics, the track's nav lines, the traffic tables, and the start grid. They
+are game data in C form, so they are gitignored, not shipped.
+
+> **This one step needs Ghidra.** `extract_physics_params.py` walks the ValueDB
+> registrar `FUN_00132D10` through a bridge on `http://127.0.0.1:8089`, so
+> Ghidra must be open with `build/burnout3.elf` loaded and the bridge running.
+> Import it with the **ELF loader and no explicit language ID** — passing one
+> forces the Binary loader and reproduces the flat-binary bug above. The other
+> six extractors need nothing but Python. This is the one rough edge in an
+> otherwise self-contained pipeline; porting it to a capstone sweep over the
+> ELF (pattern in `tools/field_usage_19be.py`) would remove it.
+
+`make` refuses to build without these and names what is missing — it will never
+quietly produce a program with invented numbers in it.
+
+### 4. The world — `make content`
+
+```bash
+make content
+```
+
+Fourteen extractors: track geometry and its textures, the collision world, the
+sky, light probes, props, car meshes and their paint, the traffic light tables,
+HUD art, and the effects rasters. `B3_TRACK` picks the circuit (default
+`US_C3_V1`, matching the runtime default).
+
+**`make assets` alone is not enough to play.** It gets you a program that
+compiles; without `make content` you build cleanly, launch, and drive through
+an empty void with no track and no skybox.
+
+### 5. Audio — `make audio`
+
+```bash
+make audio
+```
+
+~5 GB and by far the slowest step, which is why it is separate. The game runs
+without it — you get silence, not a crash.
+
+### 6. Build and run
+
+```bash
+make            # -> ./burnout3
+./burnout3
+```
+
+`make everything` runs steps 3–5 in order if you would rather do it in one go.
+
+A correct launch prints all of these:
+
+```
+[Burnout3] REAL track geometry: 97826 verts, 90246 tris from build/track.obj
+[Burnout3] GAME collision world: 60373 triangles (build/collision.bin)
+[Burnout3] REAL audio: 4 engine loops, EA TRAX 44/44 tracks
+[carfx]    env map build/tracks/US_C3_V1/envmap.png
+[Burnout3] REAL textures: 122 loaded, 0 groups unresolved (of 990)
+props:     7 models, 123 instances
+[Burnout3 HUD] 99 textures from build/frontend (edge 41/41, core 30/30, over 20/20)
+```
+
+### If something is wrong
+
+| symptom | cause |
+|---|---|
+| `make` stops, "This tree has no retail data in it" | step 3 not run |
+| No track, no sky, `Generated road mesh` and no `REAL track geometry` line | step 4 not run |
+| Silence; `no playable tracks`, `missing wave` | step 5 not run |
+| `B3_GAME_ROOT is not set` | step 1 |
+| `make assets` hangs or fails on connection refused | the Ghidra bridge, step 3 |
+| `Error 1 (ignored)` during `make content` / `make audio` | expected — see below |
+
+Two extractors exit non-zero after succeeding, and the Makefile deliberately
+ignores those two exit codes while still letting make print them:
+`extract_collision.py` writes a correct 60373-triangle world and then fails its
+own route-containment self-check (unexplained, pre-existing, tracked in
+[TODO.md](TODO.md)), and the audio extractors report 6 of 1569 waves failing to
+decode, which is the shipped data — a correct run still ends at 174
+dictionaries / 1569 waves and `EA TRAX: 44 tracks`.
+
+The reference detail behind all of this — why the ELF mapping matters, what
+each generated header holds and where it came from, format credits, and what
+must never be committed — is in **[docs/ASSETS.md](docs/ASSETS.md)**.
 
 ---
 
