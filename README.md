@@ -1,5 +1,5 @@
 # reB3
-If Claude and Ghirda had a baby. The finest slop in all the lands. 
+If Claude and Ghidra had a baby. The finest slop in all the lands. 
 
 A reverse engineering of *Burnout 3: Takedown* (Criterion Games / EA, 2004,
 Xbox) — a faithful recreation driven by data and logic recovered from the
